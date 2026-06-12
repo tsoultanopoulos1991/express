@@ -19,9 +19,16 @@ const PORT = process.env.PORT || 3000
 
 const start = async () => {
   await sequelize.sync()
-  app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
+  const server = app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
+  server.on('error', (err) => {
+    console.error('[startup] failed to start server:', err.message)
+    process.exit(1)
+  })
 }
 
-start()
+start().catch((err) => {
+  console.error('[startup] failed to start server:', err.message)
+  process.exit(1)
+})
 
 module.exports = app

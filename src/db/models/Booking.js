@@ -40,7 +40,7 @@ module.exports = (sequelize) => {
 
   Booking.associate = (models) => {
     Booking.belongsTo(models.User, { foreignKey: 'user_id' })
-    Booking.hasMany(models.BookingTicket, { foreignKey: 'booking_id' })
+    Booking.hasMany(models.BookingTicket, { foreignKey: 'booking_id', as: 'booking_tickets' })
   }
 
   return Booking
