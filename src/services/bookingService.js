@@ -6,9 +6,10 @@ const getBookings = async ({ userId, role } = {}) => {
   return Booking.findAll({ where, include: [{ model: BookingTicket, as: 'booking_tickets' }] })
 }
 
-const getBookingById = async (bookingId, userId) => {
+const getBookingById = async (bookingId, userId, role) => {
+  const where = role === 'admin' ? { id: bookingId } : { id: bookingId, user_id: userId }
   const booking = await Booking.findOne({
-    where: { id: bookingId, user_id: userId },
+    where,
     include: [{ model: BookingTicket, as: 'booking_tickets' }],
   })
 

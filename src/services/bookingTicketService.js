@@ -10,7 +10,12 @@ const getTicketsByBooking = async (bookingId, userId, role) => {
   return BookingTicket.findAll({ where: { booking_id: bookingId } })
 }
 
-const createTicket = async ({ bookingId, ticket_code }) => {
+const createTicket = async ({ bookingId, ticket_code, userId, role }) => {
+  const booking = await Booking.findOne({
+    where: role === 'admin' ? { id: bookingId } : { id: bookingId, user_id: userId },
+  })
+  if (!booking) throw new AppError('Booking not found or belongs to a different user', 404)
+
   return BookingTicket.create({ booking_id: bookingId, ticket_code })
 }
 

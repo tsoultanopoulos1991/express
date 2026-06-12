@@ -7,7 +7,7 @@ const index = asyncHandler(async (req, res) => {
 })
 
 const show = asyncHandler(async (req, res) => {
-  const booking = await getBookingById(Number(req.params.id), req.user.id)
+  const booking = await getBookingById(Number(req.params.id), req.user.id, req.user.role)
   res.status(200).json(booking)
 })
 

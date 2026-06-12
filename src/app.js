@@ -1,6 +1,8 @@
 require('dotenv').config()
 const express = require('express')
 const morgan = require('morgan')
+const swaggerUi = require('swagger-ui-express')
+const swaggerSpec = require('./swagger')
 const { sequelize } = require('./db')
 
 const app = express()
@@ -8,6 +10,7 @@ app.use(morgan('dev'))
 app.use(express.json())
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }))
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec))
 
 app.use('/api', require('./routes'))
 

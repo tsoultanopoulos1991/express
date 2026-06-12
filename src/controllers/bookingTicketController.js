@@ -14,6 +14,8 @@ const create = asyncHandler(async (req, res) => {
   const ticket = await createTicket({
     bookingId: Number(req.params.bookingId),
     ticket_code: req.body.ticket_code,
+    userId: req.user.id,
+    role: req.user.role,
   })
   console.info(`[tickets] created ticket id=${ticket.id} for booking id=${req.params.bookingId}`)
   res.status(201).json(ticket)
