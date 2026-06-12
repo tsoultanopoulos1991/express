@@ -1,5 +1,25 @@
 # Notes
 
+## Task 1 — Availability Caching
+
+### Architecture
+`GET /api/v1/products/:productId/availabilities` follows the same layered structure as the rest of the API: route → controller → `availabilityService`. The service owns both the simulated upstream and the Redis caching, using a **cache-aside** pattern (read cache → on miss, fetch upstream → store → return).
+
+### Simulated upstream
+`getUpstreamAvailability` generates data dynamically for **today** and **tomorrow** (relative to `new Date()`), with randomised slots, ticket counts and prices on every fetch. This keeps the demo data fresh regardless of when the project is run, and makes a cache miss visibly different from a cache hit.
+
+### TTL justification
+`AVAILABILITY_CACHE_TTL` defaults to **3600s (1h)** — deliberately matched to the upstream refresh rate. Caching longer than the source refreshes would serve data the upstream has already replaced; caching shorter would waste the upstream's freshness window and add load. Matching the two means a cached entry is never more stale than the upstream itself. Configurable via env so it can be tuned (e.g. lowered for local testing).
+
+### Decrement behaviour
+Bookings call `decrementSlot`, which mutates `available_tickets` for the matching `date`/`start` **in-place** and re-writes the entry **preserving the remaining TTL** (read via `redis.ttl`, not reset to the full value). This keeps availability accurate between hourly refreshes without extending the staleness window on every booking.
+
+### Expired-at-decrement → 404
+If the cache entry has expired by the time a booking tries to decrement it, `decrementSlot` returns `false` and **does not re-fetch upstream** — re-fetching would invent a fresh availability snapshot and silently allow a booking against data we no longer trust. The caller (the webhook handler in Task 2) translates this `false` into a `404`.
+
+### Tests
+`tests/availabilityService.test.js` covers all required cases against a mocked Redis client: cache hit (no upstream/store call), cache miss (fetches + stores), correct TTL on store, in-place decrement of the right slot, and decrement-on-expired returning `false`.
+
 ## Task 3 — Booking Cancellation
 
 ### Architecture

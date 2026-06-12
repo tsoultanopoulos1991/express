@@ -6,7 +6,7 @@ const swaggerSpec = require('./swagger')
 const { sequelize } = require('./db')
 
 const app = express()
-app.use(morgan('dev'))
+app.use(morgan('[:date[iso]] :method :url :status :response-time ms'))
 app.use(express.json())
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }))
