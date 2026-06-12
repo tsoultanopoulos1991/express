@@ -1,18 +1,19 @@
 require('dotenv').config()
 const express = require('express')
+const morgan = require('morgan')
 const { sequelize } = require('./db')
 
 const app = express()
+app.use(morgan('dev'))
 app.use(express.json())
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }))
 
+app.use('/api', require('./routes'))
+
 app.use((req, res) => res.status(404).json({ error: 'Not found' }))
 
-app.use((err, req, res, next) => {
-  console.error(err)
-  res.status(500).json({ error: 'Internal server error' })
-})
+app.use(require('./middleware/errorHandler'))
 
 const PORT = process.env.PORT || 3000
 
