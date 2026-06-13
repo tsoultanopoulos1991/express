@@ -7,6 +7,7 @@ RUN npm ci
 
 COPY .sequelizerc ./
 COPY src/ ./src/
+COPY scripts/ ./scripts/
 
 EXPOSE ${PORT}
 

@@ -1,15 +1,20 @@
 require('dotenv').config()
 const jwt = require('jsonwebtoken')
 
-const userId = process.argv[2] || 1
+const userId = Number(process.argv[2] || 1)
+const sign = (payload) => jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '30d' })
 
-const userToken = jwt.sign({ id: Number(userId), role: 'user' }, process.env.JWT_SECRET, { expiresIn: '1d' })
-const user2Token = jwt.sign({ id: 2, role: 'user' }, process.env.JWT_SECRET, { expiresIn: '1d' })
-const nonExistentUserToken = jwt.sign({ id: 9999, role: 'user' }, process.env.JWT_SECRET, { expiresIn: '1d' })
-const adminToken = jwt.sign({ id: 0, role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '1d' })
+const tokens = [
+  { label: `User ${userId}`,       payload: { id: userId, role: 'user' } },
+  { label: 'User 2',               payload: { id: 2,      role: 'user' } },
+  { label: 'User 9999 (no record)',payload: { id: 9999,   role: 'user' } },
+  { label: 'Admin',                payload: { id: 0,      role: 'admin' } },
+]
 
-console.log(`User ID:           ${userId}`)
-console.log(`User token:        ${userToken}`)
-console.log(`User 2 token:      ${user2Token}`)
-console.log(`Non-existent user: ${nonExistentUserToken}`)
-console.log(`Admin token:       ${adminToken}`)
+const width = Math.max(...tokens.map((t) => t.label.length))
+
+console.log('\n--- JWT Tokens ---')
+tokens.forEach(({ label, payload }) => {
+  console.log(`${label.padEnd(width)}  ${sign(payload)}`)
+})
+console.log('')
