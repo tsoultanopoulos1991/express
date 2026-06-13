@@ -21,7 +21,12 @@ app.use(require('./middleware/errorHandler'))
 const PORT = process.env.PORT || 3000
 
 const start = async () => {
-  await sequelize.sync()
+  try {
+    await sequelize.authenticate();
+    console.log('Connection has been established successfully.');
+  } catch (error) {
+    console.error('Unable to connect to the database:', error);
+  }
   const server = app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
   server.on('error', (err) => {
     console.error('[startup] failed to start server:', err.message)

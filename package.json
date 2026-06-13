@@ -4,15 +4,23 @@
   "description": "A simple Express server for Clio Muse Tours",
   "main": "src/app.js",
   "scripts": {
-    "start": "node src/app.js",
-    "dev": "nodemon src/app.js",
+    "start": "npx sequelize-cli db:migrate && npx sequelize-cli db:seed:all && node src/app.js",
+    "dev": "npx sequelize-cli db:migrate && npx sequelize-cli db:seed:all && nodemon src/app.js",
     "test": "jest --forceExit --detectOpenHandles"
   },
   "license": "ISC",
   "jest": {
-    "testMatch": ["**/tests/**/*.test.js"],
-    "roots": ["<rootDir>/tests", "<rootDir>/src"],
-    "moduleDirectories": ["node_modules", "src"]
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
+    "roots": [
+      "<rootDir>/tests",
+      "<rootDir>/src"
+    ],
+    "moduleDirectories": [
+      "node_modules",
+      "src"
+    ]
   },
   "dependencies": {
     "dotenv": "^17.4.2",
@@ -30,6 +38,7 @@
   "devDependencies": {
     "jest": "^30.4.2",
     "nodemon": "^3.1.14",
+    "sequelize-cli": "^6.6.5",
     "supertest": "^7.2.2"
   }
 }
