@@ -11,10 +11,7 @@ const handleCreated = async ({ event_id, supplier_id, supplier_product_code, boo
   })
 
   if (!productSupplier) {
-    throw new AppError(
-      `No product found for supplier_id=${supplier_id} supplier_product_code=${supplier_product_code}`,
-      404
-    )
+    throw new AppError('Product not found', 404)
   }
 
   const newBooking = await createBooking({
