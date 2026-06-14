@@ -2,10 +2,9 @@ const express = require('express')
 const router = express.Router()
 const { auth } = require('../middleware/auth')
 const validate = require('../validators/booking')
-const { index, show, create, cancel } = require('../controllers/bookingController')
+const { index, create, cancel } = require('../controllers/bookingController')
 
 router.get('/', auth, index)
-router.get('/:id', auth, validate.bookingId, show)
 router.post('/', auth, validate.createBooking, create)
 router.delete('/:id', auth, validate.bookingId, cancel)
 

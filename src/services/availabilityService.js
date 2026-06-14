@@ -1,26 +1,19 @@
 // Availability service — cache-aside pattern with Redis.
 // On GET: return cached data if present, otherwise fetch from simulated upstream and cache.
 // On booking: decrement the correct slot in-place without resetting the TTL.
-// If the cache has expired at decrement time, return false — upstream is not re-fetched.
+// If the cache has expired at decrement time, throw 404 — upstream is not re-fetched (per spec).
 const redis = require('../redis')
+const { AppError } = require('../errors')
 
 // TTL matches upstream refresh rate (1h). Staleness is bounded by in-place decrements on booking.
 const CACHE_TTL = Number(process.env.AVAILABILITY_CACHE_TTL) || 3600
 
-const randomTickets = () => Math.floor(Math.random() * 15)
-const randomPrice = () => [50, 75, 100, 120, 150][Math.floor(Math.random() * 5)]
+const SLOT_STARTS = ['09:00', '10:30', '12:00']
 
 const formatDate = (date) => date.toISOString().split('T')[0]
 
-const generateSlots = () => {
-  const starts = ['09:00', '10:30', '12:00', '14:00', '16:00']
-  const count = Math.floor(Math.random() * 3) + 2
-  return starts.slice(0, count).map((start) => ({
-    start,
-    available_tickets: randomTickets(),
-    price: randomPrice(),
-  }))
-}
+const generateSlots = () =>
+  SLOT_STARTS.map((start) => ({ start, available_tickets: 10, price: 100 }))
 
 // Simulates an upstream scheduling API that refreshes data every hour.
 const getUpstreamAvailability = (productId) => {
@@ -58,8 +51,9 @@ const getAvailability = async (productId) => {
 const decrementSlot = async (productId, date, start) => {
   const cached = await redis.get(cacheKey(productId))
   if (!cached) {
+    // Cache expired at decrement time — surface 404, do not re-fetch upstream (per spec)
     console.warn(`[availability] cache expired for product ${productId} — cannot decrement`)
-    return false
+    throw new AppError('Availability cache expired', 404)
   }
 
   const data = JSON.parse(cached)
@@ -79,4 +73,4 @@ const decrementSlot = async (productId, date, start) => {
   return true
 }
 
-module.exports = { getAvailability, decrementSlot, cacheKey, CACHE_TTL }
+module.exports = { getAvailability, decrementSlot, cacheKey, CACHE_TTL, SLOT_STARTS }

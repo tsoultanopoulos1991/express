@@ -58,30 +58,4 @@
  *       403:
  *         description: Forbidden — admin role required
  *
- * /api/v1/users/{id}:
- *   get:
- *     summary: Get user by ID
- *     description: |
- *       Returns a single user.
- *       - **admin only** — returns `403` for non-admin tokens
- *     tags: [Users]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: User found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
- *       401:
- *         description: Unauthorized — missing or invalid token
- *       403:
- *         description: Forbidden — admin role required
- *       404:
- *         description: User not found
  */

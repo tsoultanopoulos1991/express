@@ -6,19 +6,7 @@ const getBookings = async ({ userId, role } = {}) => {
   return Booking.findAll({ where, include: [{ model: BookingTicket, as: 'booking_tickets' }] })
 }
 
-const getBookingById = async (bookingId, userId, role) => {
-  const where = role === 'admin' ? { id: bookingId } : { id: bookingId, user_id: userId }
-  const booking = await Booking.findOne({
-    where,
-    include: [{ model: BookingTicket, as: 'booking_tickets' }],
-  })
-
-  if (!booking) throw new AppError('Booking not found or belongs to a different user', 404)
-
-  return booking
-}
-
-const createBooking = async ({ userId, reference_code, travel_date }) => {
+const createBooking = async ({ userId = null, reference_code, travel_date }) => {
   return Booking.create({ user_id: userId, reference_code, travel_date })
 }
 
@@ -39,4 +27,4 @@ const cancelBooking = async (bookingId, userId) => {
   return booking
 }
 
-module.exports = { getBookings, getBookingById, createBooking, cancelBooking }
+module.exports = { getBookings, createBooking, cancelBooking }

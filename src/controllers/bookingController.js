@@ -1,14 +1,9 @@
-const { getBookings, getBookingById, createBooking, cancelBooking } = require('../services/bookingService')
+const { getBookings, createBooking, cancelBooking } = require('../services/bookingService')
 const asyncHandler = require('../utils/asyncHandler')
 
 const index = asyncHandler(async (req, res) => {
   const bookings = await getBookings({ userId: req.user.id, role: req.user.role })
   res.status(200).json(bookings)
-})
-
-const show = asyncHandler(async (req, res) => {
-  const booking = await getBookingById(Number(req.params.id), req.user.id, req.user.role)
-  res.status(200).json(booking)
 })
 
 const create = asyncHandler(async (req, res) => {
@@ -24,4 +19,4 @@ const cancel = asyncHandler(async (req, res) => {
   res.status(200).json({ message: 'Booking cancelled' })
 })
 
-module.exports = { index, show, create, cancel }
+module.exports = { index, create, cancel }

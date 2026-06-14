@@ -14,13 +14,13 @@ const { ProductSupplier } = require('../src/db')
 const { createBooking } = require('../src/services/bookingService')
 const { decrementSlot } = require('../src/services/availabilityService')
 const { handleCreated } = require('../src/services/webhookService')
+const { AppError } = require('../src/errors')
 
 const payload = {
   event_id: 'evt-001',
   supplier_id: 1,
   supplier_product_code: 'PROD-EXT-001',
   booking: {
-    user_id: 1,
     reference_code: 'REF-001',
     travel_date: '2026-07-01',
     slot_start: '09:00',
@@ -40,7 +40,6 @@ describe('handleCreated', () => {
     const result = await handleCreated(payload)
 
     expect(createBooking).toHaveBeenCalledWith({
-      userId: 1,
       reference_code: 'REF-001',
       travel_date: '2026-07-01',
     })
@@ -48,15 +47,15 @@ describe('handleCreated', () => {
     expect(result).toEqual({ id: 1 })
   })
 
-  it('creates booking even when cache is expired (decrement returns false)', async () => {
+  it('rolls back the booking and throws 404 when cache is expired at decrement time', async () => {
+    const destroy = jest.fn()
     ProductSupplier.findOne.mockResolvedValue({ product_code: 'product-1' })
-    createBooking.mockResolvedValue({ id: 2 })
-    decrementSlot.mockResolvedValue(false)
+    createBooking.mockResolvedValue({ id: 2, destroy })
+    decrementSlot.mockRejectedValue(new AppError('Availability cache expired', 404))
 
-    const result = await handleCreated(payload)
+    await expect(handleCreated(payload)).rejects.toMatchObject({ status: 404 })
 
-    expect(createBooking).toHaveBeenCalledTimes(1)
-    expect(result).toEqual({ id: 2 })
+    expect(destroy).toHaveBeenCalledTimes(1)
   })
 
   it('throws 404 when product is not found', async () => {

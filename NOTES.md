@@ -15,10 +15,30 @@
 Bookings call `decrementSlot`, which mutates `available_tickets` for the matching `date`/`start` **in-place** and re-writes the entry **preserving the remaining TTL** (read via `redis.ttl`, not reset to the full value). This keeps availability accurate between hourly refreshes without extending the staleness window on every booking.
 
 ### Expired-at-decrement → 404
-If the cache entry has expired by the time a booking tries to decrement it, `decrementSlot` returns `false` and **does not re-fetch upstream** — re-fetching would invent a fresh availability snapshot and silently allow a booking against data we no longer trust. The caller (the webhook handler in Task 2) translates this `false` into a `404`.
+If the cache entry has expired by the time a booking tries to decrement it, `decrementSlot` throws a `404` and **does not re-fetch upstream** — re-fetching would invent a fresh availability snapshot and silently allow a booking against data we no longer trust. The error propagates through the webhook handler to a `404` response (see Task 2 for the booking rollback that keeps this consistent).
+
+### Redis resilience
+The Redis client is configured with `enableOfflineQueue: false` and `retryStrategy: () => null` so the app starts and stays up even if Redis is unavailable. Cache operations in `availabilityService` are wrapped in try/catch — on any Redis error, the service falls back to upstream data directly and logs a warning. The endpoint returns 200 with live data instead of 500.
 
 ### Tests
-`tests/availabilityService.test.js` covers all required cases against a mocked Redis client: cache hit (no upstream/store call), cache miss (fetches + stores), correct TTL on store, in-place decrement of the right slot, and decrement-on-expired returning `false`.
+`tests/availabilityService.test.js` covers all required cases against a mocked Redis client: cache hit (no upstream/store call), cache miss (fetches + stores), correct TTL on store, in-place decrement of the right slot, and decrement-on-expired throwing `404`.
+
+## Task 2 — Webhook Ingestion
+
+### Payload design
+The webhook payload wraps all booking fields under a `booking` object to keep the operator-level fields (`event_id`, `supplier_id`, `supplier_product_code`) clearly separated from the booking data. `event_id` is included for traceability — logged on every event so requests can be traced end-to-end, even though idempotency is not enforced (no deduplication store). In production, idempotency would be handled by persisting `event_id` and rejecting duplicates.
+
+### Product lookup
+The handler resolves the internal product via `product_suppliers` using `supplier_id` + `supplier_product_code`. If no mapping exists, it returns `404` — the booking is not created.
+
+### Decrement behaviour & expired-cache rollback
+After a booking is created, `decrementSlot` is called for the matching date and slot. Per the spec, if the cache has expired at decrement time the operation returns `404` and does **not** re-fetch upstream. Since the booking is created before the decrement, the handler rolls it back (`destroy`) before letting the `404` propagate — so an expired cache leaves no orphaned booking. The operator's retry, once availability has been re-cached, then creates the booking cleanly. Duplicate bookings on retry are impossible regardless, since `reference_code` is unique.
+
+### Unknown event types
+Unknown events return `200` and are logged — they are not treated as errors. This follows the webhook convention of always acknowledging receipt, regardless of whether the event is actionable.
+
+### Signature verification
+No HMAC signature verification is implemented. In production, the operator's signature (typically sent as a request header) should be verified before processing any payload.
 
 ## Task 3 — Booking Cancellation
 

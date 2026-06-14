@@ -65,4 +65,10 @@ const options = {
   apis: ['./src/docs/*.js'],
 }
 
-module.exports = swaggerJsdoc(options)
+const spec = swaggerJsdoc(options)
+
+const today = new Date().toISOString().split('T')[0]
+spec.paths['/api/v1/webhook'].post.requestBody.content['application/json'].schema
+  .properties.booking.properties.travel_date.example = today
+
+module.exports = spec

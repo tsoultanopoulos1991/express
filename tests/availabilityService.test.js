@@ -83,12 +83,12 @@ describe('decrementSlot', () => {
     )
   })
 
-  it('returns false when cache is expired', async () => {
+  it('throws 404 when cache is expired', async () => {
     redis.get.mockResolvedValue(null)
 
-    const result = await decrementSlot(PRODUCT_ID, '2026-07-01', '09:00')
-
-    expect(result).toBe(false)
+    await expect(decrementSlot(PRODUCT_ID, '2026-07-01', '09:00')).rejects.toMatchObject({
+      status: 404,
+    })
     expect(redis.setex).not.toHaveBeenCalled()
   })
 })

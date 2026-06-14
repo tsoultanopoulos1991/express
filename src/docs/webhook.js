@@ -11,6 +11,9 @@
  *       - Creates a booking in the database
  *       - Decrements `available_tickets` in-place in the Redis availability cache for the matching date and slot
  *
+ *       If the availability cache has expired by decrement time, the booking is rolled back and `404`
+ *       is returned (upstream is not re-fetched) — the operator's retry will create it once the cache is repopulated.
+ *
  *       **Unknown event types** are acknowledged with `200` and logged — they do not cause an error.
  *
  *       **Malformed payloads** (missing fields, wrong types) return `422`.
@@ -40,20 +43,18 @@
  *                 example: PROD-EXT-001
  *               booking:
  *                 type: object
- *                 required: [user_id, reference_code, travel_date, slot_start]
+ *                 required: [reference_code, travel_date, slot_start]
  *                 properties:
- *                   user_id:
- *                     type: integer
- *                     example: 1
  *                   reference_code:
  *                     type: string
  *                     example: REF-001
  *                   travel_date:
  *                     type: string
  *                     format: date
- *                     example: '2026-07-01'
+ *                     description: Must be today or tomorrow (YYYY-MM-DD)
  *                   slot_start:
  *                     type: string
+ *                     enum: ['09:00', '10:30', '12:00']
  *                     example: '09:00'
  *     responses:
  *       201:
@@ -80,7 +81,7 @@
  *                   type: string
  *                   example: 'Event type "cancelled" is not supported — ignored'
  *       404:
- *         description: Product not found for the given supplier_id and supplier_product_code
+ *         description: Product not found, or availability cache expired at decrement time
  *         content:
  *           application/json:
  *             schema:

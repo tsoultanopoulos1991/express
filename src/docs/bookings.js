@@ -56,31 +56,6 @@
  *         description: Unauthorized — missing or invalid token
  *
  * /api/v1/bookings/{id}:
- *   get:
- *     summary: Get booking by ID
- *     description: |
- *       Returns a single booking with its tickets.
- *       - **admin**: can retrieve any booking
- *       - **user**: can only retrieve their own booking — returns `404` if the booking belongs to a different user
- *     tags: [Bookings]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Booking found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Booking'
- *       401:
- *         description: Unauthorized — missing or invalid token
- *       404:
- *         description: Booking not found or belongs to a different user
- *
  *   delete:
  *     summary: Cancel a booking
  *     description: |
