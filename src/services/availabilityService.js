@@ -37,16 +37,22 @@ const getUpstreamAvailability = (productId) => {
 const cacheKey = (productId) => `availability:${productId}`
 
 const getAvailability = async (productId) => {
-  const cached = await redis.get(cacheKey(productId))
-  if (cached) {
-    console.info(`[availability] cache hit for product ${productId}`)
-    return JSON.parse(cached)
-  }
+  try {
+    const cached = await redis.get(cacheKey(productId))
+    if (cached) {
+      console.info(`[availability] cache hit for product ${productId}`)
+      return JSON.parse(cached)
+    }
 
-  console.info(`[availability] cache miss for product ${productId} — fetching upstream`)
-  const data = getUpstreamAvailability(productId)
-  await redis.setex(cacheKey(productId), CACHE_TTL, JSON.stringify(data))
-  return data
+    console.info(`[availability] cache miss for product ${productId} — fetching upstream`)
+    const data = getUpstreamAvailability(productId)
+    await redis.setex(cacheKey(productId), CACHE_TTL, JSON.stringify(data))
+    return data
+  } catch (err) {
+    // Redis unavailable — bypass cache and serve upstream data directly
+    console.warn(`[availability] Redis unavailable, serving uncached data: ${err.message}`)
+    return getUpstreamAvailability(productId)
+  }
 }
 
 const decrementSlot = async (productId, date, start) => {
