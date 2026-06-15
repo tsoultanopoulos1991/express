@@ -3,6 +3,7 @@
 ## Requirements
 
 - Docker & Docker Compose
+- Port `5432` free on the host (used by the Postgres container)
 
 
 ## Run
