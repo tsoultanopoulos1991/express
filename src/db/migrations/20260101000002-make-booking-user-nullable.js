@@ -1,17 +1,13 @@
 module.exports = {
-  up: async (queryInterface, Sequelize) => {
-    await queryInterface.changeColumn('bookings', 'user_id', {
-      type: Sequelize.INTEGER,
-      allowNull: true,
-      references: { model: 'users', key: 'id' },
-    })
+  up: async (queryInterface) => {
+    await queryInterface.sequelize.query(
+      'ALTER TABLE bookings ALTER COLUMN user_id DROP NOT NULL'
+    )
   },
 
-  down: async (queryInterface, Sequelize) => {
-    await queryInterface.changeColumn('bookings', 'user_id', {
-      type: Sequelize.INTEGER,
-      allowNull: false,
-      references: { model: 'users', key: 'id' },
-    })
+  down: async (queryInterface) => {
+    await queryInterface.sequelize.query(
+      'ALTER TABLE bookings ALTER COLUMN user_id SET NOT NULL'
+    )
   },
 }
