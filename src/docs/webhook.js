@@ -16,7 +16,7 @@
  *
  *       **Unknown event types** are acknowledged with `200` and logged — they do not cause an error.
  *
- *       **Malformed payloads** (missing fields, wrong types) return `422`.
+ *       **Malformed payloads** (missing fields, wrong types, invalid JSON) return `400`.
  *
  *       Public endpoint — no authentication required.
  *     tags: [Webhook]
@@ -86,8 +86,8 @@
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
- *       422:
- *         description: Validation error — missing or invalid fields
+ *       400:
+ *         description: Validation error — missing or invalid fields, or malformed JSON
  *         content:
  *           application/json:
  *             schema:
