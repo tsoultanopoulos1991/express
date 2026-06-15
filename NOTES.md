@@ -1,8 +1,5 @@
 # Notes
 
-## API Documentation
-The full API is documented with **Swagger / OpenAPI**, served at **`http://localhost:3000/api-docs`** once the app is running. Every endpoint (availability, webhook, bookings, tickets, users) is listed there with request/response schemas, status codes, auth requirements, and example payloads — it's the quickest way to explore and try the API.
-
 ## Task 1 — Availability Caching
 
 ### Architecture

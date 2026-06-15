@@ -3,7 +3,10 @@
 ## Requirements
 
 - Docker & Docker Compose
-- Port `5432` free on the host (used by the Postgres container)
+- The following host ports free (mapped by `docker compose`):
+  - `3000` — Express app (the `PORT` value in `.env`)
+  - `6379` — Redis
+  - `5433` — Postgres (mapped to the container's `5432`, chosen to avoid clashing with a local Postgres on `5432`)
 
 
 ## Run
