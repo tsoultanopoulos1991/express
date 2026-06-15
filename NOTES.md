@@ -55,18 +55,17 @@ Applied as specified: 404 → 409 → 403 → 422. The 404 intentionally covers 
 `deleted_at` timestamp rather than hard delete — preserves history, aligns with the schema.
 
 ### Additional Endpoints & Testing Flow
-Added for manual testing only (not required by the assignment). See API docs (Swagger) for full reference.
+Added for manual testing only (not required by the assignment). The seeder already creates users `alice` (id=1) and `bob` (id=2), so no user creation is needed — `POST /api/v1/users` exists but is optional. See API docs (Swagger) for full reference.
 
-1. `POST /api/v1/users` — create user
-2. `node scripts/generate-token.js <user_id>` — generate JWT
-3. `POST /api/v1/bookings` — create booking
-4. `POST /api/v1/bookings/:id/tickets` — add tickets
-5. Test guards:
-   - **404** — use a token for a different user (`node scripts/generate-token.js 2`) and try to cancel user 1's booking
+1. `node scripts/generate-token.js 1` — generate a JWT for seeded user 1 (also prints tokens for user 2, a non-existent user, and admin)
+2. `POST /api/v1/bookings` — create a booking
+3. `POST /api/v1/bookings/:id/tickets` — add tickets
+4. Test guards:
+   - **404** — use the token for user 2 and try to cancel user 1's booking
    - **409** — cancel the same booking twice
    - **403** — use a ticket via `PATCH /api/v1/bookings/:id/tickets/:ticketId/use`, then try to cancel
    - **422** — create a booking with a `travel_date` in the past and try to cancel
-6. `DELETE /api/v1/bookings/:id` — cancel
+5. `DELETE /api/v1/bookings/:id` — cancel
 
 ### Trade-offs
 - Nested tickets route (`/bookings/:id/tickets`) — tickets have no meaning outside a booking
