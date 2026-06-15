@@ -1,5 +1,7 @@
 jest.mock('../src/db', () => ({
   ProductSupplier: { findOne: jest.fn() },
+  // Run the callback directly: commits when it resolves, propagates (rolls back) when it throws.
+  sequelize: { transaction: jest.fn((cb) => cb('TX')) },
 }))
 
 jest.mock('../src/services/bookingService', () => ({
@@ -39,23 +41,21 @@ describe('handleCreated', () => {
 
     const result = await handleCreated(payload)
 
-    expect(createBooking).toHaveBeenCalledWith({
-      reference_code: 'REF-001',
-      travel_date: '2026-07-01',
-    })
+    expect(createBooking).toHaveBeenCalledWith(
+      { reference_code: 'REF-001', travel_date: '2026-07-01' },
+      'TX'
+    )
     expect(decrementSlot).toHaveBeenCalledWith('product-1', '2026-07-01', '09:00')
     expect(result).toEqual({ id: 1 })
   })
 
-  it('rolls back the booking and throws 404 when cache is expired at decrement time', async () => {
-    const destroy = jest.fn()
+  it('throws 404 and rolls back the transaction when cache is expired at decrement time', async () => {
     ProductSupplier.findOne.mockResolvedValue({ product_code: 'product-1' })
-    createBooking.mockResolvedValue({ id: 2, destroy })
+    createBooking.mockResolvedValue({ id: 2 })
     decrementSlot.mockRejectedValue(new AppError('Availability cache expired', 404))
 
+    // The transaction callback throws, so the booking write is never committed.
     await expect(handleCreated(payload)).rejects.toMatchObject({ status: 404 })
-
-    expect(destroy).toHaveBeenCalledTimes(1)
   })
 
   it('throws 404 when product is not found', async () => {

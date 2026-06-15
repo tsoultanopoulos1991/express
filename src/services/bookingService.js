@@ -6,8 +6,8 @@ const getBookings = async ({ userId, role } = {}) => {
   return Booking.findAll({ where, include: [{ model: BookingTicket, as: 'booking_tickets' }] })
 }
 
-const createBooking = async ({ userId = null, reference_code, travel_date }) => {
-  return Booking.create({ user_id: userId, reference_code, travel_date })
+const createBooking = async ({ userId = null, reference_code, travel_date }, transaction) => {
+  return Booking.create({ user_id: userId, reference_code, travel_date }, { transaction })
 }
 
 const cancelBooking = async (bookingId, userId) => {

@@ -1,4 +1,4 @@
-const { ProductSupplier } = require('../db')
+const { ProductSupplier, sequelize } = require('../db')
 const { createBooking } = require('./bookingService')
 const { decrementSlot } = require('./availabilityService')
 const { AppError } = require('../errors')
@@ -14,19 +14,17 @@ const handleCreated = async ({ event_id, supplier_id, supplier_product_code, boo
     throw new AppError('Product not found', 404)
   }
 
-  const newBooking = await createBooking({
-    reference_code: booking.reference_code,
-    travel_date: booking.travel_date,
-  })
-
-  try {
+  // Wrap the booking write in a transaction and let the decrement gate the commit: if the cache
+  // has expired, decrementSlot throws 404 (before touching Redis) and the booking is rolled back,
+  // so the operator's retry — once availability is re-cached — creates it cleanly. (Per spec.)
+  const newBooking = await sequelize.transaction(async (transaction) => {
+    const created = await createBooking(
+      { reference_code: booking.reference_code, travel_date: booking.travel_date },
+      transaction
+    )
     await decrementSlot(productSupplier.product_code, booking.travel_date, booking.slot_start)
-  } catch (err) {
-    // Cache expired at decrement time → 404 (per spec). Roll back the booking we just created
-    // so the operator's retry (once the cache is repopulated) creates it cleanly.
-    await newBooking.destroy()
-    throw err
-  }
+    return created
+  })
 
   console.info(`[webhook] booking ${newBooking.id} created for event ${event_id}`)
   return newBooking

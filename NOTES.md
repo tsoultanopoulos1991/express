@@ -6,10 +6,12 @@
 `GET /api/v1/products/:productId/availabilities` follows the same layered structure as the rest of the API: route → controller → `availabilityService`. The service owns both the simulated upstream and the Redis caching, using a **cache-aside** pattern (read cache → on miss, fetch upstream → store → return).
 
 ### Simulated upstream
-`getUpstreamAvailability` generates data dynamically for **today** and **tomorrow** (relative to `new Date()`), with randomised slots, ticket counts and prices on every fetch. This keeps the demo data fresh regardless of when the project is run, and makes a cache miss visibly different from a cache hit.
+`getUpstreamAvailability` generates data dynamically for **today** and **tomorrow** (relative to `new Date()`), so the demo data stays fresh regardless of when the project is run. Slots are **fixed** (`09:00`, `10:30`, `12:00`, each with 10 tickets at price 100) rather than randomised — this makes the cache contents deterministic, so a webhook `slot_start`/`travel_date` always maps to a real slot and the decrement is predictable and testable.
 
 ### TTL justification
-`AVAILABILITY_CACHE_TTL` defaults to **3600s (1h)** — deliberately matched to the upstream refresh rate. Caching longer than the source refreshes would serve data the upstream has already replaced; caching shorter would waste the upstream's freshness window and add load. Matching the two means a cached entry is never more stale than the upstream itself. Configurable via env so it can be tuned (e.g. lowered for local testing).
+`AVAILABILITY_CACHE_TTL` defaults to **3600s (1h)** — deliberately matched to the upstream refresh rate. Caching longer than the source refreshes would serve data the upstream has already replaced; caching shorter would waste the upstream's freshness window and add load. Configurable via env so it can be tuned (e.g. lowered for local testing).
+
+Note: the TTL and the upstream's refresh aren't aligned in time, so worst case we can serve data up to 1h stale. In production we'd fix this by having the upstream signal a refresh (and we'd drop the cache then), keeping the TTL only as a fallback.
 
 ### Decrement behaviour
 Bookings call `decrementSlot`, which mutates `available_tickets` for the matching `date`/`start` **in-place** and re-writes the entry **preserving the remaining TTL** (read via `redis.ttl`, not reset to the full value). This keeps availability accurate between hourly refreshes without extending the staleness window on every booking.
@@ -17,11 +19,7 @@ Bookings call `decrementSlot`, which mutates `available_tickets` for the matchin
 ### Expired-at-decrement → 404
 If the cache entry has expired by the time a booking tries to decrement it, `decrementSlot` throws a `404` and **does not re-fetch upstream** — re-fetching would invent a fresh availability snapshot and silently allow a booking against data we no longer trust. The error propagates through the webhook handler to a `404` response (see Task 2 for the booking rollback that keeps this consistent).
 
-### Redis resilience
-The Redis client is configured with `enableOfflineQueue: false` and `retryStrategy: () => null` so the app starts and stays up even if Redis is unavailable. Cache operations in `availabilityService` are wrapped in try/catch — on any Redis error, the service falls back to upstream data directly and logs a warning. The endpoint returns 200 with live data instead of 500.
 
-### Tests
-`tests/availabilityService.test.js` covers all required cases against a mocked Redis client: cache hit (no upstream/store call), cache miss (fetches + stores), correct TTL on store, in-place decrement of the right slot, and decrement-on-expired throwing `404`.
 
 ## Task 2 — Webhook Ingestion
 
@@ -32,7 +30,9 @@ The webhook payload wraps all booking fields under a `booking` object to keep th
 The handler resolves the internal product via `product_suppliers` using `supplier_id` + `supplier_product_code`. If no mapping exists, it returns `404` — the booking is not created.
 
 ### Decrement behaviour & expired-cache rollback
-After a booking is created, `decrementSlot` is called for the matching date and slot. Per the spec, if the cache has expired at decrement time the operation returns `404` and does **not** re-fetch upstream. Since the booking is created before the decrement, the handler rolls it back (`destroy`) before letting the `404` propagate — so an expired cache leaves no orphaned booking. The operator's retry, once availability has been re-cached, then creates the booking cleanly. Duplicate bookings on retry are impossible regardless, since `reference_code` is unique.
+The booking creation and the cache decrement run inside one Sequelize transaction. We create the booking first, then decrement. Per the spec, if the cache has expired the decrement throws `404` (and does **not** re-fetch upstream). That error rolls the transaction back, so the booking is never saved — no leftover rows to clean up. The operator can just retry once availability is cached again; a duplicate is impossible anyway because `reference_code` is unique.
+
+The transaction covers only Postgres, not Redis. That's fine here: when the cache is missing, `decrementSlot` throws **before** touching Redis, so the `404` leaves Redis untouched. The only remaining edge case — Redis updated but the Postgres commit then fails — is the usual trade-off of writing to two stores and is acceptable at this scope.
 
 ### Unknown event types
 Unknown events return `200` and are logged — they are not treated as errors. This follows the webhook convention of always acknowledging receipt, regardless of whether the event is actionable.
